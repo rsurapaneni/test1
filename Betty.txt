@@ -1,0 +1,93 @@
+033 33774477
+
+
+PIMTibco02/dM5CS8Ya\
+
+
+
+1. Regarding the Service in Service Now ?
+2. When there are more than 3 mandatory fields missing (main ones)
+3. When we are attaching Payload what is the use of again mentioning the account number
+4. Priority(p4,p5)
+
+
+1.whenever the cola new container new flag is false then it will be missing asset id
+2.the input values are invalid , cola new container flag is false & then asset id is present then get the payload for get asset framework transaction type 
+
+
+source location service id we will get from infro pro siteid 
+when you run the rdh query the pk_service id should match with one of the asset global id
+
+Query to find products for an InfoPro Site ID Enter InfoPro ID from payload into slx.Source_Service_Location_ID field:
+
+/****** Script for SelectTopNRows command from SSMS  ******/
+use RepublicDataHub
+SELECT a.Address_1,sl.Name,sl.pk_service_location_id,sl.pk_sales_territory_id,slx.Source_Service_Location_ID,sx.Source_Service_ID,s.pk_service_id ,p.pk_product_id, p.type_code,
+p.Size, p.Compactor_Indicator, p.Description, ps.pk_product_siebel_id, ps.siebel_type, ps.siebel_size,ps.Siebel_Color
+  FROM [RepublicDataHub].[dbo].[Address] A, service_location sl, service_location_xref slx, [service] s , [service_xref] sx, product p with (nolock)
+  left join product_siebel ps on  p.type_code = ps.type_code  and  p.size = ps.size and p.Compactor_Indicator = ps.Compactor_Indicator
+    where 
+       --a.address_1 like  '13561%SHERMAN%' 
+       slx.Source_Service_Location_ID = '902222856500001'
+  and a.PK_Address_ID = sl.PK_Address_ID 
+  and sl.pk_service_location_id = slx.pk_service_location_id 
+  and slx.PK_System_ID = 1
+  and sl.pk_service_location_id = s.pk_service_location_id
+  and s.Effective_End_Date is NULL 
+  and s.pk_service_id = sx.pk_service_id
+  and sx.pk_system_id = 1
+  and s.pk_product_id = p.pk_product_id
+
+
+If an Upsert Service Request has failed because of an I/O error, then this request needs to be replayed. To replay an Upsert Service Request follow these steps:
+o    Copy the Transaction Before payload from SFCD Upsert Service Request Receiver
+o    In GEMS find the  "REPSRV.ICOE.CRM.SIEBEL.UPSERT.CASE.COLA.V03" queue
+o    Right click and publish message to the queue
+o    Go to the logs for that transaction ID and ensure that the message went through without errors.
+
+
+please change it to matched container
+
+3. if the cola new container flag is true then Product Global id should be always present ( then we need to mention in service now with correct global id)
+
+4. payload for the most recent transaction
+5. the territory needs to be updated to 901 or 902 when there is 151
+
+
+
+
+Input Values are invalid:
+
+
+I looked this up myself, and found that the incorrect asset was chosen. I have included the steps below of how I did this. As a reminder, if you see the field “<COLANewContainerFlag>” contains a false value, most likely the issue is that the asset is either missing or incorrect. When the asset is not missing, please follow the steps below to verify whether or not the chosen asset was a container (correct type), or hand pickup (incorrect type).
+
+o	Invalid asset - If there is an asset, Then copy the transaction after from the “Get Asset” Transaction Type and find the value of the <ns0:AssetGlobalId> field. Then run the following query:
+use RepublicDataHub
+SELECT a.Address_1,sl.Name,sl.pk_service_location_id,sl.pk_sales_territory_id,slx.Source_Service_Location_ID,sx.Source_Service_ID,s.pk_service_id ,p.pk_product_id, p.type_code,
+p.Size, p.Compactor_Indicator, p.Description, ps.pk_product_siebel_id, ps.siebel_type, ps.siebel_size,ps.Siebel_Color
+  FROM [RepublicDataHub].[dbo].[Address] A, service_location sl, service_location_xref slx, [service] s , [service_xref] sx, product p with (nolock)
+  left join product_siebel ps on  p.type_code = ps.type_code  and  p.size = ps.size and p.Compactor_Indicator = ps.Compactor_Indicator
+    where 
+       --a.address_1 like  '13561%SHERMAN%' 
+       slx.Source_Service_Location_ID = '902223847500001'
+  and a.PK_Address_ID = sl.PK_Address_ID 
+  and sl.pk_service_location_id = slx.pk_service_location_id 
+  and slx.PK_System_ID = 1
+  and sl.pk_service_location_id = s.pk_service_location_id
+  and s.Effective_End_Date is NULL 
+  and s.pk_service_id = sx.pk_service_id
+  and sx.pk_system_id = 1
+  and s.pk_product_id = p.pk_product_id
+ 
+Replace the   slx.Source_Service_Location_ID = '902223847500001' with the value from <InfoProSiteID></InfoProSiteID> in the Get Seibel Service Data payload. When this query returns, you should be able to match up the asset pk_service_id to the asset. If it is a Hand Pickup description, or if the Asset Globel ID does not match any of the values for the account, then the asset type was invalid. This is what you need to put on the ticket that is submitted to salesForce.
+
+
+#####################
+select * FROM OPENQUERY(salesforce, 'SELECT id, SystemModstamp, ClosedDate,  SR_Number__c, Territory__c,  Reason_Code__C,Resolution_Code__c, Franchise_SR__c,status, service_rendered_date__c, Cola_New_Container__C,Infopro_Container_id__C,CaseNumber
+                 FROM Case where SR_Number__c in 
+(
+''1-931048421''
+)' )
+order by SystemModstamp
+
+
